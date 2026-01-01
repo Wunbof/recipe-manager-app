@@ -117,12 +117,16 @@ class ApiService {
         return {'success': true, 'user': user};
       } else {
         // Handle error responses
-        final errorData = jsonDecode(response.body);
-        return {'success': false, 'message': errorData['message'] ?? 'Registration failed'};
+        try {
+          final errorData = jsonDecode(response.body);
+          return {'success': false, 'message': errorData['message'] ?? 'Registration failed'};
+        } catch (_) {
+          return {'success': false, 'message': 'Registration failed: ${response.statusCode}'};
+        }
       }
     } catch (e) {
-      // Return error instead of falling back to mock
-      return {'success': false, 'message': 'Failed to connect to server. Please check your internet connection.'};
+      // Return error with more details
+      return {'success': false, 'message': 'Failed to connect to server: ${e.toString()}'};
     }
   }
 
@@ -160,29 +164,38 @@ class ApiService {
   }
 
   Future<Recipe> createRecipe(Recipe recipe) async {
-    final token = await _getToken();
-    final response = await http
-        .post(
-      Uri.parse('$baseUrl/recipes'),
-      headers: await _headers(token: token),
-      body: jsonEncode({
-        'title': recipe.title,
-        'description': recipe.description,
-        'ingredients': recipe.ingredients,
-        'instructions': recipe.instructions,
-        'cooking_time': recipe.cookingTime,
-        'category': recipe.category,
-        'image_url': recipe.imageUrl,
-      }),
-    )
-        .timeout(_timeout);
+    try {
+      final token = await _getToken();
+      final response = await http
+          .post(
+        Uri.parse('$baseUrl/recipes'),
+        headers: await _headers(token: token),
+        body: jsonEncode({
+          'title': recipe.title,
+          'description': recipe.description,
+          'ingredients': recipe.ingredients,
+          'instructions': recipe.instructions,
+          'cooking_time': recipe.cookingTime,
+          'category': recipe.category,
+          'image_url': recipe.imageUrl,
+        }),
+      )
+          .timeout(_timeout);
 
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      return Recipe.fromJson(data['data']);
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return Recipe.fromJson(data['data']);
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw Exception(errorData['message'] ?? 'Failed to create recipe: ${response.statusCode}');
+        } catch (e) {
+          throw Exception('Failed to create recipe: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to create recipe: ${e.toString()}');
     }
-
-    throw Exception('Failed to create recipe: ${response.statusCode}');
   }
 
   Future<Recipe> updateRecipe(int id, Recipe recipe) async {
