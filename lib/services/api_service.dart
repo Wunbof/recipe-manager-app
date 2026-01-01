@@ -6,7 +6,7 @@ import '../models/user.dart';
 import '../models/recipe.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://recipe-manager-app-production-ce60.up.railway.app/api';
   static const Duration _timeout = Duration(seconds: 20);
 
   // ======================
@@ -115,23 +115,15 @@ class ApiService {
         await _saveToken(user.token);
         await _saveUserData(user);
         return {'success': true, 'user': user};
+      } else {
+        // Handle error responses
+        final errorData = jsonDecode(response.body);
+        return {'success': false, 'message': errorData['message'] ?? 'Registration failed'};
       }
-    } catch (_) {
-      // FALLBACK
+    } catch (e) {
+      // Return error instead of falling back to mock
+      return {'success': false, 'message': 'Failed to connect to server. Please check your internet connection.'};
     }
-
-    // MOCK REGISTER
-    final mockUser = User.fromJson({
-      'id': 1,
-      'username': username,
-      'email': email,
-      'token': 'mock-token',
-    });
-
-    await _saveToken(mockUser.token);
-    await _saveUserData(mockUser);
-
-    return {'success': true, 'user': mockUser};
   }
 
   // ======================
